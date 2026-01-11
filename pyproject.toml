@@ -1,0 +1,47 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "djangocommand"
+version = "0.1.0"
+description = "Run, schedule, and audit Django management commands without SSH access"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+authors = [
+    { name = "Fran Hrzenjak", email = "fran.hrzenjak@gmail.com" },
+]
+keywords = ["django", "management", "commands", "devops", "automation"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Framework :: Django",
+    "Framework :: Django :: 4.2",
+    "Framework :: Django :: 5.0",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: System :: Systems Administration",
+]
+dependencies = [
+    "django>=4.2",
+    "requests>=2.28",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-django>=4.5",
+    "responses>=0.23",
+]
+
+[project.urls]
+Homepage = "https://djangocommand.com"
+Documentation = "https://docs.djangocommand.com"
+Repository = "https://github.com/frnhr/djangocommand"
+Issues = "https://github.com/frnhr/djangocommand/issues"
