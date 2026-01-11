@@ -9,6 +9,7 @@ Provides:
 """
 
 import logging
+import re
 import time
 import uuid
 from urllib.parse import urlparse
@@ -33,6 +34,33 @@ class HTTPSRequiredError(DjangoCommandClientError):
 class AuthenticationError(DjangoCommandClientError):
     """Raised when authentication fails."""
     pass
+
+
+# UUID format validation for execution IDs (prevents path injection)
+_UUID_PATTERN = re.compile(
+    r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+    re.IGNORECASE
+)
+
+
+def _validate_execution_id(execution_id: str) -> None:
+    """
+    Validate that execution_id is a valid UUID format.
+
+    This prevents path injection attacks where a malicious server could
+    send execution_ids like "../../admin/delete" to access unintended endpoints.
+
+    Args:
+        execution_id: The execution ID to validate
+
+    Raises:
+        ValueError: If execution_id is not a valid UUID format
+    """
+    if not execution_id or not _UUID_PATTERN.match(execution_id):
+        raise ValueError(
+            f"Invalid execution_id format: expected UUID, "
+            f"got {repr(execution_id)[:30]}"
+        )
 
 
 class DjangoCommandClient:
@@ -221,6 +249,7 @@ class DjangoCommandClient:
 
     def start_execution(self, execution_id: str) -> dict:
         """Mark an execution as started."""
+        _validate_execution_id(execution_id)
         return self.post(f'/api/agent/executions/{execution_id}/start/')
 
     def send_output(
@@ -240,6 +269,7 @@ class DjangoCommandClient:
             is_stderr: Whether this chunk is from stderr
             chunk_number: Sequence number for ordering and idempotency
         """
+        _validate_execution_id(execution_id)
         return self.post(f'/api/agent/executions/{execution_id}/output/', {
             'chunk_number': chunk_number,
             'segments': segments,
@@ -260,6 +290,7 @@ class DjangoCommandClient:
             exit_code: Process exit code
             status: One of 'success', 'failed', 'cancelled'
         """
+        _validate_execution_id(execution_id)
         return self.post(f'/api/agent/executions/{execution_id}/complete/', {
             'exit_code': exit_code,
             'status': status,
@@ -272,4 +303,5 @@ class DjangoCommandClient:
         Returns:
             dict with keys: cancel_requested, force_kill
         """
+        _validate_execution_id(execution_id)
         return self.get(f'/api/agent/executions/{execution_id}/cancel-status/')

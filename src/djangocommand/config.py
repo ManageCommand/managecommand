@@ -44,7 +44,7 @@ class AgentConfig:
         if not self.api_key.startswith('dc_'):
             raise ConfigurationError(
                 'DJANGOCOMMAND_API_KEY must start with "dc_". '
-                f'Got: {self.api_key[:10]}...'
+                'Check your API key format.'
             )
 
         # Validate URL format
