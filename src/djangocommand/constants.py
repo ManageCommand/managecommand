@@ -28,7 +28,6 @@ DEFAULT_ALLOWED_COMMANDS = (
     'migrate',              # Apply database migrations
     'showmigrations',       # List migrations and their status
     'dbbackup',             # django-dbbackup: backup database
-    'dbrestore',            # django-dbbackup: restore database
     'createcachetable',     # Create cache table for database cache backend
 
     # === Core Django - Static Files ===
@@ -47,7 +46,6 @@ DEFAULT_ALLOWED_COMMANDS = (
 
     # === Core Django - Data ===
     'dumpdata',             # Export data to JSON/XML
-    'loaddata',             # Load data from fixtures
 
     # === Core Django - Internationalization ===
     'compilemessages',      # Compile .po files to .mo files
@@ -58,7 +56,6 @@ DEFAULT_ALLOWED_COMMANDS = (
     # === django-extensions (popular third-party) ===
     'show_urls',            # Display all URL routes
     'validate_templates',   # Validate Django templates
-    'print_settings',       # Print Django settings (filtered)
     'list_signals',         # List all signals
     'notes',                # Show all TODO/FIXME/etc in code
     'show_template_tags',   # List all template tags
@@ -110,6 +107,8 @@ DEFAULT_DISALLOWED_COMMANDS = (
     'flush',                # Deletes ALL data from database
     'sqlflush',             # Outputs SQL to delete all data (could be piped)
     'reset_db',             # django-extensions: DROP + CREATE database
+    'dbrestore',            # django-dbbackup: restore overwrites entire database
+    'loaddata',             # Load fixtures can overwrite existing data
 
     # === Interactive shells (would hang waiting for input) ===
     'shell',                # Python REPL

@@ -33,16 +33,103 @@ python manage.py djangocommand start
 
 The runner will connect to DjangoCommand, sync your available commands, and start polling for executions.
 
+
 ## Configuration
 
-### Required
+### API key
+
+Your project's API key (get this from the DjangoCommand dashboard)
 
 ```python
-# Your project's API key (get this from the DjangoCommand dashboard)
 DJANGOCOMMAND_API_KEY = "dc_..."
 ```
 
-### Optional
+#### Enabled (allowed) commands
+
+Enable additional commands:
+
+```python
+import djangocommand
+DJANGOCOMMAND_ALLOWED_COMMANDS = tuple(
+    *djangocommand.DEFAULT_ALLOWED_COMMANDS,
+    "my_custom_command",
+    "another_command",
+)
+```
+
+Or explicitly allow only specific commands (skip the default ones):
+
+```python
+DJANGOCOMMAND_ALLOWED_COMMANDS = (
+    "my_custom_command",
+    "another_command",
+)
+```
+
+Order does not matter.
+
+By default, only commands in `DEFAULT_ALLOWED_COMMANDS` can be executed remotely:
+
+
+Default value:
+
+```python
+DEFAULT_ALLOWED_COMMANDS = (
+    # Database
+    "migrate", "showmigrations", "dbbackup", "createcachetable",
+    # Static files
+    "collectstatic", "findstatic",
+    # Maintenance
+    "clearsessions", "check", "sendtestemail", "diffsettings",
+    # Data
+    "dumpdata", "inspectdb",
+    # Testing
+    "test",
+    # django-extensions
+    "show_urls", "validate_templates", "clear_cache",
+    # Wagtail
+    "fixtree", "publish_scheduled", "update_index",
+)
+```
+
+> **DISCLAIMER**: This list is not fully vetted. You are encouraged to only allow commands that you trust and have vetted yourself.
+
+
+### Alternative - Blocklist Mode
+
+Alternative to the "ALLOWED" list is the "DISALLOWED" list. 
+
+In this mode all commands are allowed except for the ones in the blocklist.
+
+This mode is inherently less secure because newly added commands are automatically allowed.
+
+> **CAUTION**: Any new commands will by allowed by default in this mode!
+
+```python
+DJANGOCOMMAND_USE_BLOCKLIST = True
+```
+
+Default value:
+
+```python
+DEFAULT_DISALLOWED_COMMANDS = (
+    # Database destruction
+    "flush", "sqlflush", "reset_db", "dbrestore", "loaddata",
+    # Interactive shells
+    "shell", "shell_plus", "dbshell",
+    # Development servers
+    "runserver", "runserver_plus", "testserver",
+    # Security sensitive
+    "createsuperuser", "changepassword",
+    # File modifications
+    "makemigrations", "squashmigrations",
+)
+```
+
+> **DISCLAIMER**: This list is not exhaustive. You are responsible for ensuring that only safe commands are allowed.
+
+
+### Optional / Advanced Settings
 
 ```python
 # Server URL (default: https://app.djangocommand.com)
@@ -61,184 +148,48 @@ DJANGOCOMMAND_MAX_RETRIES = 3
 DJANGOCOMMAND_ALLOW_HTTP_HOSTS = ['localhost', '127.0.0.1', '::1']
 ```
 
-## Command Security
-
-The runner includes a security layer that controls which commands can be executed remotely. This protects against accidental or malicious execution of dangerous commands.
-
-### Default: Allowlist Mode (Recommended)
-
-By default, DjangoCommand uses an **allowlist approach** - only commands explicitly listed can be executed remotely. This is the most secure configuration.
-
-The default allowlist includes common, safe Django commands:
-
-| Category | Commands |
-|----------|----------|
-| Database | `migrate`, `showmigrations`, `dbbackup`, `dbrestore`, `createcachetable` |
-| Static files | `collectstatic`, `findstatic` |
-| Maintenance | `clearsessions`, `check`, `sendtestemail`, `diffsettings` |
-| Data | `dumpdata`, `loaddata`, `inspectdb` |
-| Testing | `test` |
-| django-extensions | `show_urls`, `validate_templates`, `print_settings`, `clear_cache` |
-| Wagtail | `fixtree`, `publish_scheduled`, `update_index` |
-| And more... | See `DEFAULT_ALLOWED_COMMANDS` for the full list |
-
-Commands not in the allowlist are:
-- **Not synced** to the server (won't appear in the UI)
-- **Rejected at runtime** with an error message (defense in depth)
-
-### Adding Commands to the Allowlist
-
-To allow additional commands, extend the default allowlist:
-
-```python
-from djangocommand import DEFAULT_ALLOWED_COMMANDS
-
-DJANGOCOMMAND_ALLOWED_COMMANDS = DEFAULT_ALLOWED_COMMANDS + (
-    'my_custom_command',
-    'another_safe_command',
-)
-```
-
-### Using a Custom Allowlist
-
-For maximum control, define your own allowlist from scratch:
-
-```python
-# Only these 3 commands can be executed remotely
-DJANGOCOMMAND_ALLOWED_COMMANDS = (
-    'migrate',
-    'collectstatic',
-    'clearsessions',
-)
-```
-
-### Removing Commands from the Default Allowlist
-
-Use list comprehension to remove specific commands:
-
-```python
-from djangocommand import DEFAULT_ALLOWED_COMMANDS
-
-# Remove 'loaddata' from the allowlist
-DJANGOCOMMAND_ALLOWED_COMMANDS = tuple(
-    cmd for cmd in DEFAULT_ALLOWED_COMMANDS
-    if cmd != 'loaddata'
-)
-```
-
-### Alternative: Blocklist Mode
-
-If you prefer to allow all commands except dangerous ones (less secure but more permissive), enable blocklist mode:
-
-```python
-# Enable blocklist mode
-DJANGOCOMMAND_USE_BLOCKLIST = True
-```
-
-In blocklist mode, the default blocklist includes:
-
-| Category | Commands |
-|----------|----------|
-| Database destruction | `flush`, `sqlflush`, `reset_db` |
-| Interactive shells | `shell`, `shell_plus`, `dbshell` |
-| Development servers | `runserver`, `runserver_plus`, `testserver` |
-| Security sensitive | `createsuperuser`, `changepassword` |
-| File modifications | `makemigrations`, `squashmigrations` |
-| Other dangerous | `drop_test_database`, `delete_squashed_migrations`, `clean_pyc` |
-
-You can extend the blocklist:
-
-```python
-DJANGOCOMMAND_USE_BLOCKLIST = True
-
-from djangocommand import DEFAULT_DISALLOWED_COMMANDS
-
-DJANGOCOMMAND_DISALLOWED_COMMANDS = DEFAULT_DISALLOWED_COMMANDS + (
-    'my_dangerous_command',
-)
-```
-
-Or allow a blocked command by removing it:
-
-```python
-DJANGOCOMMAND_USE_BLOCKLIST = True
-
-from djangocommand import DEFAULT_DISALLOWED_COMMANDS
-
-DJANGOCOMMAND_DISALLOWED_COMMANDS = tuple(
-    cmd for cmd in DEFAULT_DISALLOWED_COMMANDS
-    if cmd != 'createsuperuser'
-)
-```
 
 ## Running the Runner
 
-### Foreground (development)
+Current architecture supports only 1 runner per project.
+
+### Foreground
 
 ```bash
 python manage.py djangocommand start
 ```
 
-### Background (production)
+Starts the runner in the foreground. Press Ctrl+C to stop. 
 
-Use a process manager like systemd or supervisor:
+This is the recommended option for Kubernetes, systemd, Docker, and similar process managers that handle lifecycle and restarts.
 
-```ini
-# /etc/supervisor/conf.d/djangocommand.conf
-[program:djangocommand]
-command=/path/to/venv/bin/python manage.py djangocommand start
-directory=/path/to/your/project
-user=www-data
-autostart=true
-autorestart=true
+### Background (detached)
+
+```bash
+python manage.py djangocommand start -d
 ```
 
-### Docker
+Starts the runner in the background. 
 
-```dockerfile
-CMD ["python", "manage.py", "djangocommand", "start"]
-```
+This is recommended for development and testing only.
+It can be used in production where other process managers are not available.
+YMMV.
 
-## Programmatic Usage
+### Managing the Runner
 
-You can also use the client programmatically:
+Use these commands to manage a runner.
 
-```python
-from djangocommand import Runner
+Works whether the runner is running in the foreground or background.
 
-# Create runner from Django settings
-runner = Runner.from_settings()
+```bash
+# Check if the runner is running
+python manage.py djangocommand status
 
-# Run the runner (blocks until stopped)
-runner.run()
+# Stop the background runner
+python manage.py djangocommand stop [--force]
 
-# Or just run a single heartbeat cycle
-runner.run_once()
-```
-
-### Checking Command Permissions
-
-```python
-from djangocommand import (
-    is_command_allowed,
-    is_using_blocklist,
-    get_allowed_commands,
-    get_disallowed_commands,
-    DEFAULT_ALLOWED_COMMANDS,
-)
-
-# Check if a command is allowed
-allowed, reason = is_command_allowed('migrate')
-# (True, '')
-
-allowed, reason = is_command_allowed('shell')
-# (False, 'not in DJANGOCOMMAND_ALLOWED_COMMANDS allowlist')
-
-# Check which mode is active
-if is_using_blocklist():
-    blocked = get_disallowed_commands()  # frozenset of command names
-else:
-    allowed = get_allowed_commands()  # frozenset of command names
+# Restart the runner
+python manage.py djangocommand restart [-d]
 ```
 
 ## License
