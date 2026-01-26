@@ -162,6 +162,7 @@ class DjangoCommandClient:
         if 'headers' in kwargs:
             headers.update(kwargs.pop('headers'))
 
+        logger.debug(f'{method} {url}')
         try:
             response = self.session.request(
                 method,
@@ -170,6 +171,7 @@ class DjangoCommandClient:
                 timeout=self.timeout,
                 **kwargs
             )
+            logger.debug(f'{method} {url} -> {response.status_code}')
 
             # Handle authentication/authorization errors (trigger backoff)
             # 401: Invalid/missing credentials
@@ -198,9 +200,11 @@ class DjangoCommandClient:
             return response.json()
 
         except requests.exceptions.Timeout:
+            logger.debug(f'{method} {url} -> TIMEOUT')
             raise DjangoCommandClientError(f'Request timed out: {url}')
         except requests.exceptions.ConnectionError as e:
-            raise DjangoCommandClientError(f'Connection failed: {e}')
+            logger.debug(f'{method} {url} -> CONNECTION ERROR: {e}')
+            raise DjangoCommandClientError(f'Connection failed to {url}: {e}')
 
     def get(self, endpoint: str, **kwargs) -> dict:
         """Make a GET request."""

@@ -251,6 +251,7 @@ class Runner:
         Returns:
             Response dict or None if failed
         """
+        logger.debug(f'Sending heartbeat to {self.config.server_url}...')
         try:
             response = self.client.heartbeat(
                 runner_version=self._runner_version,
@@ -258,6 +259,8 @@ class Runner:
                 django_version=self._django_version,
                 commands_hash=self._commands_hash,
             )
+
+            logger.info(f'Heartbeat OK -> {self.config.server_url}')
 
             # Mark auth as valid on successful heartbeat
             self._auth_mark_valid()
@@ -292,10 +295,11 @@ class Runner:
             return response
 
         except AuthenticationError as e:
+            logger.warning(f'Heartbeat FAILED (auth) -> {self.config.server_url}: {e}')
             self._auth_disable_and_backoff(e)
             return None
         except DjangoCommandClientError as e:
-            logger.error(f'Heartbeat failed: {e}')
+            logger.error(f'Heartbeat FAILED -> {self.config.server_url}: {e}')
             return None
 
     def poll_and_execute(self):
