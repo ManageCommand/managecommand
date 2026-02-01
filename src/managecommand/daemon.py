@@ -1,5 +1,5 @@
 """
-Daemon utilities for the DjangoCommand runner.
+Daemon utilities for the ManageCommand runner.
 
 Provides:
 - Pidfile: PID file management with stale detection
@@ -43,11 +43,11 @@ def get_state_dir(base_dir: str) -> Path:
         base_dir: The Django project's BASE_DIR setting.
 
     Returns:
-        Path to the state directory (e.g., /tmp/djangocommand-abc123def456/)
+        Path to the state directory (e.g., /tmp/managecommand-abc123def456/)
     """
     # Create a short hash of the base directory
     dir_hash = hashlib.sha256(base_dir.encode()).hexdigest()[:12]
-    return Path(tempfile.gettempdir()) / f"djangocommand-{dir_hash}"
+    return Path(tempfile.gettempdir()) / f"managecommand-{dir_hash}"
 
 
 @dataclass
@@ -138,10 +138,10 @@ class Pidfile:
         try:
             os.kill(pid, 0)  # Signal 0 doesn't kill, just checks
             return True
-        except OSError as e:
-            if e.errno == errno.ESRCH:  # No such process
+        except OSError as err:
+            if err.errno == errno.ESRCH:  # No such process
                 return False
-            elif e.errno == errno.EPERM:  # Permission denied = process exists
+            elif err.errno == errno.EPERM:  # Permission denied = process exists
                 return True
             raise
 
@@ -320,8 +320,8 @@ class ProcessController:
 
         try:
             os.kill(pid, sig)
-        except OSError as e:
-            if e.errno == errno.ESRCH:
+        except OSError as err:
+            if err.errno == errno.ESRCH:
                 # Process already dead
                 self.pidfile.remove()
                 return True
@@ -338,8 +338,8 @@ class ProcessController:
             try:
                 os.kill(pid, 0)  # Check if still alive
                 time.sleep(self.STOP_POLL_INTERVAL)
-            except OSError as e:
-                if e.errno == errno.ESRCH:
+            except OSError as err:
+                if err.errno == errno.ESRCH:
                     # Process died
                     self.pidfile.remove()
                     return True

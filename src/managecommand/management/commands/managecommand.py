@@ -1,18 +1,18 @@
 """
-Django management command to run the DjangoCommand runner.
+Django management command to run the ManageCommand runner.
 
 Usage:
-    python manage.py djangocommand                    # Show status
-    python manage.py djangocommand start              # Start foreground
-    python manage.py djangocommand start -d           # Start detached
-    python manage.py djangocommand start -v 2         # Start with verbose output
-    python manage.py djangocommand start --no-reload  # Disable auto-reload
-    python manage.py djangocommand stop               # Graceful stop
-    python manage.py djangocommand stop --force       # Force stop
-    python manage.py djangocommand restart            # Restart
-    python manage.py djangocommand restart -d         # Restart detached
+    python manage.py managecommand                    # Show status
+    python manage.py managecommand start              # Start foreground
+    python manage.py managecommand start -d           # Start detached
+    python manage.py managecommand start -v 2         # Start with verbose output
+    python manage.py managecommand start --no-reload  # Disable auto-reload
+    python manage.py managecommand stop               # Graceful stop
+    python manage.py managecommand stop --force       # Force stop
+    python manage.py managecommand restart            # Restart
+    python manage.py managecommand restart -d         # Restart detached
 
-Documentation: https://djangocommand.com/docs
+Documentation: https://managecommand.com/docs
 """
 
 import json
@@ -24,9 +24,9 @@ from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 from django.utils import autoreload
 
-from djangocommand.runner import Runner
-from djangocommand.config import ConfigurationError
-from djangocommand.daemon import (
+from managecommand.runner import Runner
+from managecommand.config import ConfigurationError
+from managecommand.daemon import (
     DaemonContext,
     ProcessController,
     get_state_dir,
@@ -34,7 +34,7 @@ from djangocommand.daemon import (
 
 
 class Command(BaseCommand):
-    help = "Run the DjangoCommand runner to sync commands and execute remote requests"
+    help = "Run the ManageCommand runner to sync commands and execute remote requests"
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -257,12 +257,12 @@ class Command(BaseCommand):
         """Run the runner main loop."""
         try:
             runner = Runner.from_settings()
-        except ConfigurationError as e:
-            self.stderr.write(self.style.ERROR(f"Configuration error: {e}"))
+        except ConfigurationError as err:
+            self.stderr.write(self.style.ERROR(f"Configuration error: {err}"))
             sys.exit(1)
 
         self.stdout.write(
-            self.style.SUCCESS("Starting DjangoCommand runner...\n" "Press Ctrl+C to stop.")
+            self.style.SUCCESS("Starting ManageCommand runner...\n" "Press Ctrl+C to stop.")
         )
 
         try:

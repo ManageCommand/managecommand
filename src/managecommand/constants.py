@@ -1,5 +1,5 @@
 """
-Constants for DjangoCommand client.
+Constants for ManageCommand client.
 
 This module contains only pure Python constants with NO Django imports,
 making it safe to import in Django settings.py files.
@@ -8,17 +8,17 @@ making it safe to import in Django settings.py files.
 # =============================================================================
 # DEFAULT ALLOWED COMMANDS (security-first approach)
 # =============================================================================
-# By default, DjangoCommand uses an allowlist approach - only commands in this
+# By default, ManageCommand uses an allowlist approach - only commands in this
 # list can be executed remotely. This is the most secure default.
 #
 # To extend this list in your settings.py:
-#   from djangocommand import DEFAULT_ALLOWED_COMMANDS
-#   DJANGOCOMMAND_ALLOWED_COMMANDS = DEFAULT_ALLOWED_COMMANDS + (
+#   from managecommand import DEFAULT_ALLOWED_COMMANDS
+#   MANAGECOMMAND_ALLOWED_COMMANDS = DEFAULT_ALLOWED_COMMANDS + (
 #       'my_custom_command',
 #   )
 #
 # To restrict to specific commands:
-#   DJANGOCOMMAND_ALLOWED_COMMANDS = (
+#   MANAGECOMMAND_ALLOWED_COMMANDS = (
 #       'migrate',
 #       'collectstatic',
 #   )
@@ -93,12 +93,12 @@ DEFAULT_ALLOWED_COMMANDS = (
 # DEFAULT DISALLOWED COMMANDS (blocklist approach - optional)
 # =============================================================================
 # If you prefer a blocklist approach (allow all except dangerous commands),
-# set DJANGOCOMMAND_USE_BLOCKLIST = True in your settings and optionally
-# customize DJANGOCOMMAND_DISALLOWED_COMMANDS.
+# set MANAGECOMMAND_USE_BLOCKLIST = True in your settings and optionally
+# customize MANAGECOMMAND_DISALLOWED_COMMANDS.
 #
 # To extend the blocklist in your settings.py:
-#   from djangocommand import DEFAULT_DISALLOWED_COMMANDS
-#   DJANGOCOMMAND_DISALLOWED_COMMANDS = DEFAULT_DISALLOWED_COMMANDS + (
+#   from managecommand import DEFAULT_DISALLOWED_COMMANDS
+#   MANAGECOMMAND_DISALLOWED_COMMANDS = DEFAULT_DISALLOWED_COMMANDS + (
 #       'my_dangerous_command',
 #   )
 

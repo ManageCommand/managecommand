@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Callable
 
 if TYPE_CHECKING:
-    from .client import DjangoCommandClient
+    from .client import ManageCommandClient
 
 from .client import AuthenticationError
 
@@ -104,7 +104,7 @@ class OutputStreamManager:
 
     def __init__(
         self,
-        client: "DjangoCommandClient",
+        client: "ManageCommandClient",
         execution_id: str,
         flush_interval: float = 1.5,
         auth_check: Callable[[], bool] | None = None,
@@ -177,12 +177,12 @@ class OutputStreamManager:
                 chunk_num
             )
             return True
-        except AuthenticationError as e:
+        except AuthenticationError as err:
             if self._on_auth_error:
-                self._on_auth_error(e)
+                self._on_auth_error(err)
             return False
-        except Exception as e:
-            logger.warning(f"Failed to send output chunk {chunk_num}: {e}")
+        except Exception as err:
+            logger.warning(f"Failed to send output chunk {chunk_num}: {err}")
             return True  # Continue trying for non-auth errors
 
     def finalize(self):
@@ -206,7 +206,7 @@ class CommandExecutor:
     def __init__(
         self,
         project_path: str,
-        client: "DjangoCommandClient",
+        client: "ManageCommandClient",
         auth_check: Callable[[], bool] | None = None,
         on_auth_error: Callable[[Exception], None] | None = None,
     ):
@@ -297,8 +297,8 @@ class CommandExecutor:
             status = 'success' if exit_code == 0 else 'failed'
             return ExecutionResult(exit_code=exit_code, status=status)
 
-        except Exception as e:
-            logger.exception(f"Execution failed: {e}")
+        except Exception as err:
+            logger.exception(f"Execution failed: {err}")
             return ExecutionResult(exit_code=-1, status='failed')
 
         finally:
@@ -377,8 +377,8 @@ class CommandExecutor:
             status = 'success' if exit_code == 0 else 'failed'
             return ExecutionResult(exit_code=exit_code, status=status)
 
-        except Exception as e:
-            logger.exception(f"Execution failed: {e}")
+        except Exception as err:
+            logger.exception(f"Execution failed: {err}")
             stream_manager.finalize()
             return ExecutionResult(exit_code=-1, status='failed')
 
@@ -395,8 +395,8 @@ class CommandExecutor:
         try:
             for line in stream:
                 stream_manager.append(line, is_stderr)
-        except Exception as e:
-            logger.warning(f"Stream read error: {e}")
+        except Exception as err:
+            logger.warning(f"Stream read error: {err}")
 
     def cancel(self, force: bool = False):
         """

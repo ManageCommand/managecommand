@@ -1,5 +1,5 @@
 """
-DjangoCommand Runner core.
+ManageCommand Runner core.
 
 The runner maintains a heartbeat with the server, syncs commands,
 and executes pending commands with output streaming.
@@ -16,7 +16,7 @@ from typing import Optional
 
 import django
 
-from .client import AuthenticationError, DjangoCommandClient, DjangoCommandClientError
+from .client import AuthenticationError, ManageCommandClient, ManageCommandClientError
 from .config import RunnerConfig, load_config
 from .discovery import get_commands_with_hash
 from .executor import CommandExecutor
@@ -38,7 +38,7 @@ except ImportError:
 
 class Runner:
     """
-    DjangoCommand runner that maintains connection with server.
+    ManageCommand runner that maintains connection with server.
 
     Responsibilities:
     - Heartbeat every N seconds
@@ -48,7 +48,7 @@ class Runner:
     """
 
     # Exclude our own command to avoid recursion
-    EXCLUDED_COMMANDS = ['djangocommand']
+    EXCLUDED_COMMANDS = ['managecommand']
 
     # Execution settings
     MAX_CONCURRENT_EXECUTIONS = 4
@@ -61,7 +61,7 @@ class Runner:
 
     def __init__(self, config: RunnerConfig):
         self.config = config
-        self.client = DjangoCommandClient(
+        self.client = ManageCommandClient(
             server_url=config.server_url,
             api_key=config.api_key,
             timeout=config.request_timeout,
@@ -125,12 +125,12 @@ class Runner:
 
         Uses security mode from settings:
         - Allowlist mode (default): Only include commands in
-          DJANGOCOMMAND_ALLOWED_COMMANDS
+          MANAGECOMMAND_ALLOWED_COMMANDS
         - Blocklist mode: Include all commands except those in
-          DJANGOCOMMAND_DISALLOWED_COMMANDS
+          MANAGECOMMAND_DISALLOWED_COMMANDS
 
         Always excludes:
-        - Runner's own command (djangocommand)
+        - Runner's own command (managecommand)
         """
         if is_using_blocklist():
             # Blocklist mode: exclude disallowed commands
@@ -180,11 +180,11 @@ class Runner:
             logger.info(f'Synced {response.get("synced_count", 0)} commands')
             return True
 
-        except AuthenticationError as e:
-            self._auth_disable_and_backoff(e)
+        except AuthenticationError as err:
+            self._auth_disable_and_backoff(err)
             return False
-        except DjangoCommandClientError as e:
-            logger.error(f'Failed to sync commands: {e}')
+        except ManageCommandClientError as err:
+            logger.error(f'Failed to sync commands: {err}')
             return False
 
     # -------------------------------------------------------------------------
@@ -294,12 +294,12 @@ class Runner:
 
             return response
 
-        except AuthenticationError as e:
-            logger.warning(f'Heartbeat FAILED (auth) -> {self.config.server_url}: {e}')
-            self._auth_disable_and_backoff(e)
+        except AuthenticationError as err:
+            logger.warning(f'Heartbeat FAILED (auth) -> {self.config.server_url}: {err}')
+            self._auth_disable_and_backoff(err)
             return None
-        except DjangoCommandClientError as e:
-            logger.error(f'Heartbeat FAILED -> {self.config.server_url}: {e}')
+        except ManageCommandClientError as err:
+            logger.error(f'Heartbeat FAILED -> {self.config.server_url}: {err}')
             return None
 
     def poll_and_execute(self):
@@ -345,10 +345,10 @@ class Runner:
                     execution.get('use_metadata_only_mode', False),
                 )
 
-        except AuthenticationError as e:
-            self._auth_disable_and_backoff(e)
-        except DjangoCommandClientError as e:
-            logger.error(f'Failed to poll executions: {e}')
+        except AuthenticationError as err:
+            self._auth_disable_and_backoff(err)
+        except ManageCommandClientError as err:
+            logger.error(f'Failed to poll executions: {err}')
 
     def _run_execution(
         self,
@@ -395,8 +395,8 @@ class Runner:
             # Mark execution as started on server
             try:
                 self.client.start_execution(execution_id)
-            except DjangoCommandClientError as e:
-                logger.error(f'Failed to start execution {execution_id}: {e}')
+            except ManageCommandClientError as err:
+                logger.error(f'Failed to start execution {execution_id}: {err}')
                 return
 
             # If metadata-only mode, send simulated output before execution
@@ -441,13 +441,13 @@ class Runner:
                         f'Execution {execution_id} completed: {result.status} '
                         f'(exit code: {result.exit_code})'
                     )
-                except AuthenticationError as e:
-                    self._auth_disable_and_backoff(e)
+                except AuthenticationError as err:
+                    self._auth_disable_and_backoff(err)
                     logger.warning(
                         f'Completion report failed for {execution_id}: auth revoked'
                     )
-                except DjangoCommandClientError as e:
-                    logger.error(f'Failed to complete execution {execution_id}: {e}')
+                except ManageCommandClientError as err:
+                    logger.error(f'Failed to complete execution {execution_id}: {err}')
 
         finally:
             # Remove from active executions
@@ -473,8 +473,8 @@ class Runner:
                 is_stderr=True,
                 chunk_number=2,
             )
-        except DjangoCommandClientError as e:
-            logger.warning(f'Failed to send metadata-only output for {execution_id}: {e}')
+        except ManageCommandClientError as err:
+            logger.warning(f'Failed to send metadata-only output for {execution_id}: {err}')
 
     def _reject_execution(self, execution_id: str, command: str, reason: str):
         """
@@ -486,8 +486,8 @@ class Runner:
         try:
             # Mark as started so it shows up in the UI
             self.client.start_execution(execution_id)
-        except DjangoCommandClientError as e:
-            logger.error(f'Failed to start rejected execution {execution_id}: {e}')
+        except ManageCommandClientError as err:
+            logger.error(f'Failed to start rejected execution {execution_id}: {err}')
             return
 
         # Send rejection message as output
@@ -496,7 +496,7 @@ class Runner:
                 f"Command '{command}' rejected by runner security policy.\n"
                 f"Reason: {reason}\n"
                 f"\n"
-                f"To allow this command, remove it from DJANGOCOMMAND_DISALLOWED_COMMANDS\n"
+                f"To allow this command, remove it from MANAGECOMMAND_DISALLOWED_COMMANDS\n"
                 f"in your Django settings.\n"
             )
         else:
@@ -504,11 +504,11 @@ class Runner:
                 f"Command '{command}' rejected by runner security policy.\n"
                 f"Reason: {reason}\n"
                 f"\n"
-                f"To allow this command, add it to DJANGOCOMMAND_ALLOWED_COMMANDS\n"
+                f"To allow this command, add it to MANAGECOMMAND_ALLOWED_COMMANDS\n"
                 f"in your Django settings:\n"
                 f"\n"
-                f"  from djangocommand import DEFAULT_ALLOWED_COMMANDS\n"
-                f"  DJANGOCOMMAND_ALLOWED_COMMANDS = DEFAULT_ALLOWED_COMMANDS + ('{command}',)\n"
+                f"  from managecommand import DEFAULT_ALLOWED_COMMANDS\n"
+                f"  MANAGECOMMAND_ALLOWED_COMMANDS = DEFAULT_ALLOWED_COMMANDS + ('{command}',)\n"
             )
         try:
             self.client.send_output(
@@ -517,8 +517,8 @@ class Runner:
                 is_stderr=True,
                 chunk_number=1,
             )
-        except DjangoCommandClientError as e:
-            logger.error(f'Failed to send rejection message for {execution_id}: {e}')
+        except ManageCommandClientError as err:
+            logger.error(f'Failed to send rejection message for {execution_id}: {err}')
 
         # Complete as failed
         try:
@@ -528,8 +528,8 @@ class Runner:
                 status='failed',
             )
             logger.info(f'Execution {execution_id} rejected: {reason}')
-        except DjangoCommandClientError as e:
-            logger.error(f'Failed to complete rejected execution {execution_id}: {e}')
+        except ManageCommandClientError as err:
+            logger.error(f'Failed to complete rejected execution {execution_id}: {err}')
 
     def _poll_cancel_status(
         self,
@@ -554,10 +554,10 @@ class Runner:
                     )
                     executor.cancel(force=force)
                     break
-            except AuthenticationError as e:
-                self._auth_disable_and_backoff(e)
+            except AuthenticationError as err:
+                self._auth_disable_and_backoff(err)
                 # Don't break, just stop making requests until auth recovers
-            except DjangoCommandClientError:
+            except ManageCommandClientError:
                 pass  # Ignore errors, keep polling
 
             # Wait before next poll
@@ -637,7 +637,7 @@ class Runner:
         self._running = True
 
         logger.info(
-            f'Starting DjangoCommand runner v{self._runner_version}\n'
+            f'Starting ManageCommand runner v{self._runner_version}\n'
             f'  Server: {self.config.server_url}\n'
             f'  Heartbeat interval: {self.config.heartbeat_interval}s\n'
             f'  Execution poll interval: {self.EXECUTION_POLL_INTERVAL}s\n'

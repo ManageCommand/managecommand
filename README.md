@@ -1,11 +1,11 @@
-# djangocommand
+# managecommand
 
-Python client for [DjangoCommand](https://djangocommand.com) - run, schedule, and audit Django management commands without SSH access.
+Python client for [ManageCommand](https://managecommand.com) - run, schedule, and audit Django management commands without SSH access.
 
 ## Installation
 
 ```bash
-pip install djangocommand-runner
+pip install managecommand-runner
 ```
 
 ## Quick Start
@@ -15,33 +15,33 @@ pip install djangocommand-runner
 ```python
 INSTALLED_APPS = [
     # ...
-    'djangocommand',
+    'managecommand',
 ]
 ```
 
 2. Add your API key to `settings.py`:
 
 ```python
-DJANGOCOMMAND_API_KEY = "dc_your_api_key_here"
+MANAGECOMMAND_API_KEY = "dc_your_api_key_here"
 ```
 
 3. Start the runner:
 
 ```bash
-python manage.py djangocommand start
+python manage.py managecommand start
 ```
 
-The runner will connect to DjangoCommand, sync your available commands, and start polling for executions.
+The runner will connect to ManageCommand, sync your available commands, and start polling for executions.
 
 
 ## Configuration
 
 ### API key
 
-Your project's API key (get this from the DjangoCommand dashboard)
+Your project's API key (get this from the ManageCommand dashboard)
 
 ```python
-DJANGOCOMMAND_API_KEY = "dc_..."
+MANAGECOMMAND_API_KEY = "dc_..."
 ```
 
 #### Enabled (allowed) commands
@@ -49,9 +49,9 @@ DJANGOCOMMAND_API_KEY = "dc_..."
 Enable additional commands:
 
 ```python
-import djangocommand
-DJANGOCOMMAND_ALLOWED_COMMANDS = tuple(
-    *djangocommand.DEFAULT_ALLOWED_COMMANDS,
+import managecommand
+MANAGECOMMAND_ALLOWED_COMMANDS = tuple(
+    *managecommand.DEFAULT_ALLOWED_COMMANDS,
     "my_custom_command",
     "another_command",
 )
@@ -60,7 +60,7 @@ DJANGOCOMMAND_ALLOWED_COMMANDS = tuple(
 Or explicitly allow only specific commands (skip the default ones):
 
 ```python
-DJANGOCOMMAND_ALLOWED_COMMANDS = (
+MANAGECOMMAND_ALLOWED_COMMANDS = (
     "my_custom_command",
     "another_command",
 )
@@ -97,7 +97,7 @@ DEFAULT_ALLOWED_COMMANDS = (
 
 ### Alternative - Blocklist Mode
 
-Alternative to the "ALLOWED" list is the "DISALLOWED" list. 
+Alternative to the "ALLOWED" list is the "DISALLOWED" list.
 
 In this mode all commands are allowed except for the ones in the blocklist.
 
@@ -106,7 +106,7 @@ This mode is inherently less secure because newly added commands are automatical
 > **CAUTION**: Any new commands will by allowed by default in this mode!
 
 ```python
-DJANGOCOMMAND_USE_BLOCKLIST = True
+MANAGECOMMAND_USE_BLOCKLIST = True
 ```
 
 Default value:
@@ -132,20 +132,20 @@ DEFAULT_DISALLOWED_COMMANDS = (
 ### Optional / Advanced Settings
 
 ```python
-# Server URL (default: https://app.djangocommand.com)
-DJANGOCOMMAND_SERVER_URL = "https://app.djangocommand.com"
+# Server URL (default: https://app.managecommand.com)
+MANAGECOMMAND_SERVER_URL = "https://app.managecommand.com"
 
 # Runner heartbeat interval in seconds (default: 30, minimum: 5)
-DJANGOCOMMAND_HEARTBEAT_INTERVAL = 30
+MANAGECOMMAND_HEARTBEAT_INTERVAL = 30
 
 # HTTP request timeout in seconds (default: 30)
-DJANGOCOMMAND_REQUEST_TIMEOUT = 30
+MANAGECOMMAND_REQUEST_TIMEOUT = 30
 
 # Max retries for failed requests (default: 3)
-DJANGOCOMMAND_MAX_RETRIES = 3
+MANAGECOMMAND_MAX_RETRIES = 3
 
 # Hosts allowed to use HTTP instead of HTTPS (default: localhost only)
-DJANGOCOMMAND_ALLOW_HTTP_HOSTS = ['localhost', '127.0.0.1', '::1']
+MANAGECOMMAND_ALLOW_HTTP_HOSTS = ['localhost', '127.0.0.1', '::1']
 ```
 
 
@@ -155,7 +155,7 @@ For commands that produce sensitive output (credentials, PII) or very high-volum
 
 ```python
 # Commands that always run in metadata-only mode
-DJANGOCOMMAND_METADATAONLY_COMMANDS = (
+MANAGECOMMAND_METADATAONLY_COMMANDS = (
     "generate_api_keys",
     "export_user_data",
     "sync_large_dataset",
@@ -177,20 +177,20 @@ Current architecture supports only 1 runner per project.
 ### Foreground
 
 ```bash
-python manage.py djangocommand start
+python manage.py managecommand start
 ```
 
-Starts the runner in the foreground. Press Ctrl+C to stop. 
+Starts the runner in the foreground. Press Ctrl+C to stop.
 
 This is the recommended option for Kubernetes, systemd, Docker, and similar process managers that handle lifecycle and restarts.
 
 ### Background (detached)
 
 ```bash
-python manage.py djangocommand start -d
+python manage.py managecommand start -d
 ```
 
-Starts the runner in the background. 
+Starts the runner in the background.
 
 This is recommended for development and testing only.
 It can be used in production where other process managers are not available.
@@ -204,13 +204,13 @@ Works whether the runner is running in the foreground or background.
 
 ```bash
 # Check if the runner is running
-python manage.py djangocommand status
+python manage.py managecommand status
 
 # Stop the background runner
-python manage.py djangocommand stop [--force]
+python manage.py managecommand stop [--force]
 
 # Restart the runner
-python manage.py djangocommand restart [-d]
+python manage.py managecommand restart [-d]
 ```
 
 ## License

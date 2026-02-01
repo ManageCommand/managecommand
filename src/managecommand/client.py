@@ -1,5 +1,5 @@
 """
-HTTP client for DjangoCommand server communication.
+HTTP client for ManageCommand server communication.
 
 Provides:
 - API key authentication
@@ -21,17 +21,17 @@ from urllib3.util.retry import Retry
 logger = logging.getLogger(__name__)
 
 
-class DjangoCommandClientError(Exception):
+class ManageCommandClientError(Exception):
     """Base exception for client errors."""
     pass
 
 
-class HTTPSRequiredError(DjangoCommandClientError):
+class HTTPSRequiredError(ManageCommandClientError):
     """Raised when HTTPS is required but HTTP was used."""
     pass
 
 
-class AuthenticationError(DjangoCommandClientError):
+class AuthenticationError(ManageCommandClientError):
     """Raised when authentication fails."""
     pass
 
@@ -63,9 +63,9 @@ def _validate_execution_id(execution_id: str) -> None:
         )
 
 
-class DjangoCommandClient:
+class ManageCommandClient:
     """
-    HTTP client for communicating with DjangoCommand server.
+    HTTP client for communicating with ManageCommand server.
 
     Handles:
     - Bearer token authentication
@@ -88,7 +88,7 @@ class DjangoCommandClient:
         Initialize the client.
 
         Args:
-            server_url: Base URL of DjangoCommand server (e.g., https://app.djangocommand.com)
+            server_url: Base URL of ManageCommand server (e.g., https://app.managecommand.com)
             api_key: API key for authentication (dc_xxx format)
             timeout: Request timeout in seconds
             max_retries: Maximum number of retries for failed requests
@@ -153,7 +153,7 @@ class DjangoCommandClient:
 
         Raises:
             AuthenticationError: If authentication fails
-            DjangoCommandClientError: For other API errors
+            ManageCommandClientError: For other API errors
         """
         url = f'{self.server_url}{endpoint}'
         headers = self._get_headers()
@@ -193,7 +193,7 @@ class DjangoCommandClient:
                     error_msg = error_data.get('detail', error_data.get('error', response.text))
                 except ValueError:
                     error_msg = response.text
-                raise DjangoCommandClientError(
+                raise ManageCommandClientError(
                     f'API error ({response.status_code}): {error_msg}'
                 )
 
@@ -201,13 +201,13 @@ class DjangoCommandClient:
 
         except requests.exceptions.Timeout:
             logger.debug(f'{method} {url} -> TIMEOUT')
-            raise DjangoCommandClientError(f'Request timed out: {url}')
-        except requests.exceptions.ConnectionError as e:
-            logger.debug(f'{method} {url} -> CONNECTION ERROR: {e}')
-            raise DjangoCommandClientError(f'Connection failed to {url}: {e}')
-        except requests.exceptions.RetryError as e:
-            logger.debug(f'{method} {url} -> MAX RETRIES EXCEEDED: {e}')
-            raise DjangoCommandClientError(f'Max retries exceeded for {url}: {e}')
+            raise ManageCommandClientError(f'Request timed out: {url}')
+        except requests.exceptions.ConnectionError as err:
+            logger.debug(f'{method} {url} -> CONNECTION ERROR: {err}')
+            raise ManageCommandClientError(f'Connection failed to {url}: {err}')
+        except requests.exceptions.RetryError as err:
+            logger.debug(f'{method} {url} -> MAX RETRIES EXCEEDED: {err}')
+            raise ManageCommandClientError(f'Max retries exceeded for {url}: {err}')
 
     def get(self, endpoint: str, **kwargs) -> dict:
         """Make a GET request."""
