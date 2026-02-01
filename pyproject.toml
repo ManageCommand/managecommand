@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "managecommand-runner"
+name = "managecommand"
 version = "0.1.0"
 description = "Run, schedule, and audit Django management commands without SSH access"
 readme = "README.md"

@@ -4,7 +4,7 @@ ManageCommand client library.
 Run, schedule, and audit Django management commands without SSH access.
 
 Usage:
-    1. Install: pip install managecommand-runner
+    1. Install: pip install managecommand
     2. Add to INSTALLED_APPS: 'managecommand'
     3. Configure in settings.py:
         MANAGECOMMAND_API_KEY = "dc_your_api_key"

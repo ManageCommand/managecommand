@@ -5,7 +5,7 @@ Python client for [ManageCommand](https://managecommand.com) - run, schedule, an
 ## Installation
 
 ```bash
-pip install managecommand-runner
+pip install managecommand
 ```
 
 ## Quick Start
