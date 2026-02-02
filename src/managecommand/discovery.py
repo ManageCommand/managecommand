@@ -3,6 +3,16 @@ Django management command discovery.
 
 Discovers all available management commands in the Django project
 and computes a hash for delta sync.
+
+Supports bound commands via MANAGECOMMAND_BOUND_COMMANDS setting:
+    MANAGECOMMAND_BOUND_COMMANDS = {
+        "runscript": [
+            {"args": "backup_db --verbose", "label": "Backup database"},
+            {"args": "cleanup --days=30", "label": "Cleanup old data"},
+        ],
+        # Or without labels (args used as label):
+        "other_command": ["--option1", "--option2"],
+    }
 """
 
 import hashlib
@@ -21,6 +31,60 @@ def _clear_commands_cache():
     if hasattr(get_commands, 'cache_clear'):
         get_commands.cache_clear()
         logger.debug('Cleared get_commands cache')
+
+
+def get_bound_commands() -> dict[str, list[dict]]:
+    """
+    Get bound command configurations from Django settings.
+
+    Returns a dict mapping command names to lists of allowed argument sets.
+    Each argument set is a dict with 'args' and 'label' keys.
+
+    The setting MANAGECOMMAND_BOUND_COMMANDS can be:
+    - A dict with command names as keys and lists of arg sets as values
+    - Each arg set can be a dict {"args": "...", "label": "..."} or just a string
+
+    Example:
+        MANAGECOMMAND_BOUND_COMMANDS = {
+            "runscript": [
+                {"args": "backup_db --verbose", "label": "Backup database"},
+                {"args": "cleanup --days=30", "label": "Cleanup old data"},
+            ],
+            "other_command": ["--option1", "--option2"],  # labels auto-generated
+        }
+    """
+    from django.conf import settings
+
+    raw_config = getattr(settings, 'MANAGECOMMAND_BOUND_COMMANDS', {})
+    if not raw_config:
+        return {}
+
+    result = {}
+    for command_name, arg_sets in raw_config.items():
+        normalized_sets = []
+        for arg_set in arg_sets:
+            if isinstance(arg_set, str):
+                # Simple string form: use args as label
+                normalized_sets.append({
+                    'args': arg_set,
+                    'label': arg_set or '(no arguments)',
+                })
+            elif isinstance(arg_set, dict):
+                # Dict form: extract args and label
+                args = arg_set.get('args', '')
+                label = arg_set.get('label', args or '(no arguments)')
+                normalized_sets.append({
+                    'args': args,
+                    'label': label,
+                })
+            else:
+                logger.warning(
+                    f'Invalid bound args entry for {command_name}: {arg_set}'
+                )
+        if normalized_sets:
+            result[command_name] = normalized_sets
+
+    return result
 
 
 def _get_command_help(command_instance, name: str) -> str:
@@ -56,7 +120,7 @@ def discover_commands(
             Takes precedence over exclude.
 
     Returns:
-        List of command dicts with name, app_label, help_text
+        List of command dicts with name, app_label, help_text, and optionally bound_args
     """
     # Clear cache to discover newly added commands
     _clear_commands_cache()
@@ -64,6 +128,9 @@ def discover_commands(
     exclude_set = set(exclude or [])
     include_set = set(include) if include else None
     commands = []
+
+    # Get bound commands configuration
+    bound_commands = get_bound_commands()
 
     # get_commands() returns {command_name: app_label_or_module}
     for name, app in get_commands().items():
@@ -88,19 +155,32 @@ def discover_commands(
             else:
                 app_label = app.__name__ if hasattr(app, '__name__') else str(app)
 
-            commands.append({
+            cmd_data = {
                 'name': name,
                 'app_label': app_label,
                 'help_text': help_text,
-            })
+            }
+
+            # Add bound_args if this command has restrictions
+            if name in bound_commands:
+                cmd_data['bound_args'] = bound_commands[name]
+                logger.debug(
+                    f'Command {name} is bound with {len(bound_commands[name])} arg sets'
+                )
+
+            commands.append(cmd_data)
         except Exception as e:
             logger.warning(f'Failed to load command {name}: {e}')
             # Still include the command with minimal info
-            commands.append({
+            cmd_data = {
                 'name': name,
                 'app_label': str(app) if isinstance(app, str) else '',
                 'help_text': '',
-            })
+            }
+            # Include bound_args even for failed loads
+            if name in bound_commands:
+                cmd_data['bound_args'] = bound_commands[name]
+            commands.append(cmd_data)
 
     return commands
 

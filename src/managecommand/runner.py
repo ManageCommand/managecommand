@@ -21,9 +21,11 @@ from .config import RunnerConfig, load_config
 from .discovery import get_commands_with_hash
 from .executor import CommandExecutor
 from .security import (
+    are_args_allowed,
     get_allowed_commands,
     get_disallowed_commands,
     is_command_allowed,
+    is_command_bound,
     is_using_blocklist,
 )
 
@@ -362,7 +364,7 @@ class Runner:
         Run a single execution (called from thread pool).
 
         Handles the full lifecycle: start -> run -> complete.
-        Rejects disallowed commands with an error message.
+        Rejects disallowed commands or invalid args with an error message.
         """
         # Check if command is allowed before doing anything
         allowed, reason = is_command_allowed(command)
@@ -371,6 +373,15 @@ class Runner:
                 f"Execution {execution_id}: command '{command}' rejected - {reason}"
             )
             self._reject_execution(execution_id, command, reason)
+            return
+
+        # Check if args are allowed for bound commands
+        args_allowed, args_reason = are_args_allowed(command, args)
+        if not args_allowed:
+            logger.warning(
+                f"Execution {execution_id}: args for '{command}' rejected - {args_reason}"
+            )
+            self._reject_execution_args(execution_id, command, args, args_reason)
             return
 
         # Determine if metadata-only mode should be used
@@ -528,6 +539,58 @@ class Runner:
                 status='failed',
             )
             logger.info(f'Execution {execution_id} rejected: {reason}')
+        except ManageCommandClientError as err:
+            logger.error(f'Failed to complete rejected execution {execution_id}: {err}')
+
+    def _reject_execution_args(
+        self, execution_id: str, command: str, args: str, reason: str
+    ):
+        """
+        Reject an execution due to disallowed arguments for a bound command.
+
+        Marks the execution as started, sends an error message, and completes
+        with failed status so the user can see why it was rejected.
+        """
+        try:
+            # Mark as started so it shows up in the UI
+            self.client.start_execution(execution_id)
+        except ManageCommandClientError as err:
+            logger.error(f'Failed to start rejected execution {execution_id}: {err}')
+            return
+
+        # Send rejection message as output
+        error_message = (
+            f"Arguments rejected by runner security policy.\n"
+            f"Command: {command}\n"
+            f"Args: {args}\n"
+            f"Reason: {reason}\n"
+            f"\n"
+            f"This command is configured as a 'bound command' which restricts\n"
+            f"execution to specific predefined argument sets.\n"
+            f"\n"
+            f"To modify allowed arguments, update MANAGECOMMAND_BOUND_COMMANDS\n"
+            f"in your Django settings.\n"
+        )
+        try:
+            self.client.send_output(
+                execution_id=execution_id,
+                segments=[{'timestamp': time.time(), 'content': error_message}],
+                is_stderr=True,
+                chunk_number=1,
+            )
+        except ManageCommandClientError as err:
+            logger.error(f'Failed to send rejection message for {execution_id}: {err}')
+
+        # Complete as failed
+        try:
+            self.client.complete_execution(
+                execution_id=execution_id,
+                exit_code=-1,
+                status='failed',
+            )
+            logger.info(
+                f'Execution {execution_id} rejected: args not allowed for bound command'
+            )
         except ManageCommandClientError as err:
             logger.error(f'Failed to complete rejected execution {execution_id}: {err}')
 
