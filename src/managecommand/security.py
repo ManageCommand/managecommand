@@ -38,7 +38,8 @@ def is_using_blocklist() -> bool:
     Returns True if MANAGECOMMAND_USE_BLOCKLIST = True in settings.
     """
     from django.conf import settings
-    return getattr(settings, 'MANAGECOMMAND_USE_BLOCKLIST', False)
+
+    return getattr(settings, "MANAGECOMMAND_USE_BLOCKLIST", False)
 
 
 def get_allowed_commands() -> frozenset[str]:
@@ -54,9 +55,7 @@ def get_allowed_commands() -> frozenset[str]:
     from django.conf import settings
 
     allowed = getattr(
-        settings,
-        'MANAGECOMMAND_ALLOWED_COMMANDS',
-        DEFAULT_ALLOWED_COMMANDS
+        settings, "MANAGECOMMAND_ALLOWED_COMMANDS", DEFAULT_ALLOWED_COMMANDS
     )
     return frozenset(allowed)
 
@@ -74,9 +73,7 @@ def get_disallowed_commands() -> frozenset[str]:
     from django.conf import settings
 
     disallowed = getattr(
-        settings,
-        'MANAGECOMMAND_DISALLOWED_COMMANDS',
-        DEFAULT_DISALLOWED_COMMANDS
+        settings, "MANAGECOMMAND_DISALLOWED_COMMANDS", DEFAULT_DISALLOWED_COMMANDS
     )
     return frozenset(disallowed)
 
@@ -103,14 +100,12 @@ def is_command_allowed(command: str) -> tuple[bool, str]:
     from django.conf import settings
 
     # Check if using blocklist mode
-    use_blocklist = getattr(settings, 'MANAGECOMMAND_USE_BLOCKLIST', False)
+    use_blocklist = getattr(settings, "MANAGECOMMAND_USE_BLOCKLIST", False)
 
     if use_blocklist:
         # Blocklist mode: allow all except blocked commands
         disallowed_commands = getattr(
-            settings,
-            'MANAGECOMMAND_DISALLOWED_COMMANDS',
-            DEFAULT_DISALLOWED_COMMANDS
+            settings, "MANAGECOMMAND_DISALLOWED_COMMANDS", DEFAULT_DISALLOWED_COMMANDS
         )
         disallowed_set = frozenset(disallowed_commands)
 
@@ -121,9 +116,7 @@ def is_command_allowed(command: str) -> tuple[bool, str]:
     else:
         # Allowlist mode (default): only allow explicitly listed commands
         allowed_commands = getattr(
-            settings,
-            'MANAGECOMMAND_ALLOWED_COMMANDS',
-            DEFAULT_ALLOWED_COMMANDS
+            settings, "MANAGECOMMAND_ALLOWED_COMMANDS", DEFAULT_ALLOWED_COMMANDS
         )
         allowed_set = frozenset(allowed_commands)
 
@@ -180,7 +173,7 @@ def get_allowed_args_for_command(command: str) -> list[str] | None:
     bound_commands = get_bound_commands()
     if command not in bound_commands:
         return None
-    return [arg_set['args'] for arg_set in bound_commands[command]]
+    return [arg_set["args"] for arg_set in bound_commands[command]]
 
 
 def are_args_allowed(command: str, args: str) -> tuple[bool, str]:
@@ -206,18 +199,21 @@ def are_args_allowed(command: str, args: str) -> tuple[bool, str]:
         return True, ""
 
     # Bound commands must match exactly one of the allowed arg sets
-    allowed_args = [arg_set['args'] for arg_set in bound_commands[command]]
+    allowed_args = [arg_set["args"] for arg_set in bound_commands[command]]
 
     # Normalize args for comparison (strip whitespace)
-    normalized_args = args.strip() if args else ''
+    normalized_args = args.strip() if args else ""
 
     for allowed in allowed_args:
         if normalized_args == allowed.strip():
             return True, ""
 
     # Build error message with allowed options
-    allowed_str = ', '.join(f'"{a}"' for a in allowed_args)
-    return False, f"args '{args}' not in allowed set for bound command. Allowed: {allowed_str}"
+    allowed_str = ", ".join(f'"{a}"' for a in allowed_args)
+    return (
+        False,
+        f"args '{args}' not in allowed set for bound command. Allowed: {allowed_str}",
+    )
 
 
 class ArgsDisallowedError(Exception):

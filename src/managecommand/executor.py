@@ -9,13 +9,13 @@ Provides:
 
 import logging
 import os
-import signal
 import subprocess
 import sys
 import threading
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .client import ManageCommandClient
@@ -28,6 +28,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ExecutionResult:
     """Result of a command execution."""
+
     exit_code: int
     status: str  # 'success', 'failed', 'cancelled', 'timed_out'
 
@@ -58,7 +59,7 @@ class LineBuffer:
                 if self.current_line_timestamp is None:
                     self.current_line_timestamp = time.time()
                 self.current_line_content += char
-                if char == '\n':
+                if char == "\n":
                     self.completed_lines.append(
                         (self.current_line_timestamp, self.current_line_content)
                     )
@@ -82,10 +83,12 @@ class LineBuffer:
 
             # Add partial line if any
             if self.current_line_content:
-                segments.append({
-                    "timestamp": self.current_line_timestamp,
-                    "content": self.current_line_content
-                })
+                segments.append(
+                    {
+                        "timestamp": self.current_line_timestamp,
+                        "content": self.current_line_content,
+                    }
+                )
                 # Clear content but keep timestamp as None for next append
                 # (next content will be continuation - no new timestamp until \n)
                 self.current_line_timestamp = None
@@ -170,12 +173,7 @@ class OutputStreamManager:
             chunk_num = self.chunk_number
 
         try:
-            self.client.send_output(
-                self.execution_id,
-                segments,
-                is_stderr,
-                chunk_num
-            )
+            self.client.send_output(self.execution_id, segments, is_stderr, chunk_num)
             return True
         except AuthenticationError as err:
             if self._on_auth_error:
@@ -243,18 +241,21 @@ class CommandExecutor:
 
         # Build command using same Python interpreter as runner
         # Use -u flag for unbuffered output (instead of env var)
-        manage_py = os.path.join(self.project_path, 'manage.py')
-        cmd = [sys.executable, '-u', manage_py, command]
+        manage_py = os.path.join(self.project_path, "manage.py")
+        cmd = [sys.executable, "-u", manage_py, command]
         if args:
             # Split args string into list (handle quoted strings properly)
             import shlex
+
             cmd.extend(shlex.split(args))
 
         logger.info(f"Executing: {' '.join(cmd)}")
         if metadata_only:
             logger.info("Running in metadata-only mode (no output capture)")
         logger.debug(f"Working directory: {self.project_path}")
-        logger.debug(f"DJANGO_SETTINGS_MODULE: {os.environ.get('DJANGO_SETTINGS_MODULE', 'not set')}")
+        logger.debug(
+            f"DJANGO_SETTINGS_MODULE: {os.environ.get('DJANGO_SETTINGS_MODULE', 'not set')}"
+        )
 
         if metadata_only:
             return self._execute_metadata_only(cmd, timeout)
@@ -286,20 +287,20 @@ class CommandExecutor:
             except subprocess.TimeoutExpired:
                 logger.warning(f"Command timed out after {timeout}s")
                 self._kill_process()
-                return ExecutionResult(exit_code=-1, status='timed_out')
+                return ExecutionResult(exit_code=-1, status="timed_out")
 
             # Check if cancelled
             with self._cancel_lock:
                 if self.cancelled:
-                    return ExecutionResult(exit_code=exit_code, status='cancelled')
+                    return ExecutionResult(exit_code=exit_code, status="cancelled")
 
             # Determine status
-            status = 'success' if exit_code == 0 else 'failed'
+            status = "success" if exit_code == 0 else "failed"
             return ExecutionResult(exit_code=exit_code, status=status)
 
         except Exception as err:
             logger.exception(f"Execution failed: {err}")
-            return ExecutionResult(exit_code=-1, status='failed')
+            return ExecutionResult(exit_code=-1, status="failed")
 
         finally:
             self.process = None
@@ -342,12 +343,12 @@ class CommandExecutor:
             stdout_thread = threading.Thread(
                 target=self._read_stream,
                 args=(self.process.stdout, False, stream_manager),
-                daemon=True
+                daemon=True,
             )
             stderr_thread = threading.Thread(
                 target=self._read_stream,
                 args=(self.process.stderr, True, stream_manager),
-                daemon=True
+                daemon=True,
             )
             stdout_thread.start()
             stderr_thread.start()
@@ -359,7 +360,7 @@ class CommandExecutor:
                 logger.warning(f"Command timed out after {timeout}s")
                 self._kill_process()
                 stream_manager.finalize()
-                return ExecutionResult(exit_code=-1, status='timed_out')
+                return ExecutionResult(exit_code=-1, status="timed_out")
 
             # Wait for reader threads to finish
             stdout_thread.join(timeout=2.0)
@@ -371,25 +372,22 @@ class CommandExecutor:
             # Check if cancelled
             with self._cancel_lock:
                 if self.cancelled:
-                    return ExecutionResult(exit_code=exit_code, status='cancelled')
+                    return ExecutionResult(exit_code=exit_code, status="cancelled")
 
             # Determine status
-            status = 'success' if exit_code == 0 else 'failed'
+            status = "success" if exit_code == 0 else "failed"
             return ExecutionResult(exit_code=exit_code, status=status)
 
         except Exception as err:
             logger.exception(f"Execution failed: {err}")
             stream_manager.finalize()
-            return ExecutionResult(exit_code=-1, status='failed')
+            return ExecutionResult(exit_code=-1, status="failed")
 
         finally:
             self.process = None
 
     def _read_stream(
-        self,
-        stream,
-        is_stderr: bool,
-        stream_manager: OutputStreamManager
+        self, stream, is_stderr: bool, stream_manager: OutputStreamManager
     ):
         """Read from a stream and send to stream manager."""
         try:

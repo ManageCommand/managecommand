@@ -24,13 +24,13 @@ from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 from django.utils import autoreload
 
-from managecommand.runner import Runner
 from managecommand.config import ConfigurationError
 from managecommand.daemon import (
     DaemonContext,
     ProcessController,
     get_state_dir,
 )
+from managecommand.runner import Runner
 
 
 class Command(BaseCommand):
@@ -262,7 +262,9 @@ class Command(BaseCommand):
             sys.exit(1)
 
         self.stdout.write(
-            self.style.SUCCESS("Starting ManageCommand runner...\n" "Press Ctrl+C to stop.")
+            self.style.SUCCESS(
+                "Starting ManageCommand runner...\n" "Press Ctrl+C to stop."
+            )
         )
 
         try:

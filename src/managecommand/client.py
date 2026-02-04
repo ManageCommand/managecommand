@@ -23,23 +23,19 @@ logger = logging.getLogger(__name__)
 
 class ManageCommandClientError(Exception):
     """Base exception for client errors."""
-    pass
 
 
 class HTTPSRequiredError(ManageCommandClientError):
     """Raised when HTTPS is required but HTTP was used."""
-    pass
 
 
 class AuthenticationError(ManageCommandClientError):
     """Raised when authentication fails."""
-    pass
 
 
 # UUID format validation for execution IDs (prevents path injection)
 _UUID_PATTERN = re.compile(
-    r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
-    re.IGNORECASE
+    r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", re.IGNORECASE
 )
 
 
@@ -74,7 +70,7 @@ class ManageCommandClient:
     - Automatic retries with exponential backoff
     """
 
-    DEFAULT_ALLOW_HTTP_HOSTS = ['localhost', '127.0.0.1', '::1']
+    DEFAULT_ALLOW_HTTP_HOSTS = ["localhost", "127.0.0.1", "::1"]
 
     def __init__(
         self,
@@ -94,11 +90,12 @@ class ManageCommandClient:
             max_retries: Maximum number of retries for failed requests
             allow_http_hosts: List of hostnames allowed to use HTTP (default: localhost only)
         """
-        self.server_url = server_url.rstrip('/')
+        self.server_url = server_url.rstrip("/")
         self.api_key = api_key
         self.timeout = timeout
         self.allow_http_hosts = (
-            allow_http_hosts if allow_http_hosts is not None
+            allow_http_hosts
+            if allow_http_hosts is not None
             else self.DEFAULT_ALLOW_HTTP_HOSTS.copy()
         )
 
@@ -111,18 +108,18 @@ class ManageCommandClient:
             total=max_retries,
             backoff_factor=1,  # 1s, 2s, 4s...
             status_forcelist=[429, 500, 502, 503, 504],
-            allowed_methods=['HEAD', 'GET', 'POST', 'PUT', 'DELETE'],
+            allowed_methods=["HEAD", "GET", "POST", "PUT", "DELETE"],
         )
         adapter = HTTPAdapter(max_retries=retry_strategy)
-        self.session.mount('http://', adapter)
-        self.session.mount('https://', adapter)
+        self.session.mount("http://", adapter)
+        self.session.mount("https://", adapter)
 
     def _validate_url_security(self):
         """Validate that HTTPS is used unless host is in allow_http_hosts."""
         parsed = urlparse(self.server_url)
 
         is_http_allowed = parsed.hostname in self.allow_http_hosts
-        is_https = parsed.scheme == 'https'
+        is_https = parsed.scheme == "https"
 
         if not is_https and not is_http_allowed:
             raise HTTPSRequiredError(
@@ -133,10 +130,10 @@ class ManageCommandClient:
     def _get_headers(self) -> dict:
         """Get headers for API requests including replay protection."""
         return {
-            'Authorization': f'Bearer {self.api_key}',
-            'Content-Type': 'application/json',
-            'X-Request-Timestamp': str(int(time.time())),
-            'X-Request-Nonce': str(uuid.uuid4()),
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+            "X-Request-Timestamp": str(int(time.time())),
+            "X-Request-Nonce": str(uuid.uuid4()),
         }
 
     def _request(self, method: str, endpoint: str, **kwargs) -> dict:
@@ -155,23 +152,19 @@ class ManageCommandClient:
             AuthenticationError: If authentication fails
             ManageCommandClientError: For other API errors
         """
-        url = f'{self.server_url}{endpoint}'
+        url = f"{self.server_url}{endpoint}"
         headers = self._get_headers()
 
         # Merge any additional headers
-        if 'headers' in kwargs:
-            headers.update(kwargs.pop('headers'))
+        if "headers" in kwargs:
+            headers.update(kwargs.pop("headers"))
 
-        logger.debug(f'{method} {url}')
+        logger.debug(f"{method} {url}")
         try:
             response = self.session.request(
-                method,
-                url,
-                headers=headers,
-                timeout=self.timeout,
-                **kwargs
+                method, url, headers=headers, timeout=self.timeout, **kwargs
             )
-            logger.debug(f'{method} {url} -> {response.status_code}')
+            logger.debug(f"{method} {url} -> {response.status_code}")
 
             # Handle authentication/authorization errors (trigger backoff)
             # 401: Invalid/missing credentials
@@ -179,43 +172,47 @@ class ManageCommandClient:
             if response.status_code in (401, 403):
                 try:
                     error_data = response.json()
-                    error_msg = error_data.get('detail', error_data.get('error', response.text))
+                    error_msg = error_data.get(
+                        "detail", error_data.get("error", response.text)
+                    )
                 except ValueError:
                     error_msg = response.text
                 raise AuthenticationError(
-                    f'Access denied ({response.status_code}): {error_msg}'
+                    f"Access denied ({response.status_code}): {error_msg}"
                 )
 
             # Handle other errors
             if response.status_code >= 400:
                 try:
                     error_data = response.json()
-                    error_msg = error_data.get('detail', error_data.get('error', response.text))
+                    error_msg = error_data.get(
+                        "detail", error_data.get("error", response.text)
+                    )
                 except ValueError:
                     error_msg = response.text
                 raise ManageCommandClientError(
-                    f'API error ({response.status_code}): {error_msg}'
+                    f"API error ({response.status_code}): {error_msg}"
                 )
 
             return response.json()
 
         except requests.exceptions.Timeout:
-            logger.debug(f'{method} {url} -> TIMEOUT')
-            raise ManageCommandClientError(f'Request timed out: {url}')
+            logger.debug(f"{method} {url} -> TIMEOUT")
+            raise ManageCommandClientError(f"Request timed out: {url}")
         except requests.exceptions.ConnectionError as err:
-            logger.debug(f'{method} {url} -> CONNECTION ERROR: {err}')
-            raise ManageCommandClientError(f'Connection failed to {url}: {err}')
+            logger.debug(f"{method} {url} -> CONNECTION ERROR: {err}")
+            raise ManageCommandClientError(f"Connection failed to {url}: {err}")
         except requests.exceptions.RetryError as err:
-            logger.debug(f'{method} {url} -> MAX RETRIES EXCEEDED: {err}')
-            raise ManageCommandClientError(f'Max retries exceeded for {url}: {err}')
+            logger.debug(f"{method} {url} -> MAX RETRIES EXCEEDED: {err}")
+            raise ManageCommandClientError(f"Max retries exceeded for {url}: {err}")
 
     def get(self, endpoint: str, **kwargs) -> dict:
         """Make a GET request."""
-        return self._request('GET', endpoint, **kwargs)
+        return self._request("GET", endpoint, **kwargs)
 
     def post(self, endpoint: str, data: dict = None, **kwargs) -> dict:
         """Make a POST request with JSON body."""
-        return self._request('POST', endpoint, json=data, **kwargs)
+        return self._request("POST", endpoint, json=data, **kwargs)
 
     # Convenience methods for runner API
 
@@ -232,12 +229,15 @@ class ManageCommandClient:
         Returns:
             dict with keys: ok, commands_in_sync, pending_executions
         """
-        return self.post('/api/runner/heartbeat/', {
-            'runner_version': runner_version,
-            'python_version': python_version,
-            'django_version': django_version,
-            'commands_hash': commands_hash,
-        })
+        return self.post(
+            "/api/runner/heartbeat/",
+            {
+                "runner_version": runner_version,
+                "python_version": python_version,
+                "django_version": django_version,
+                "commands_hash": commands_hash,
+            },
+        )
 
     def sync_commands(self, commands: list[dict]) -> dict:
         """
@@ -249,9 +249,12 @@ class ManageCommandClient:
         Returns:
             dict with keys: ok, synced_count, commands_hash
         """
-        return self.post('/api/runner/commands/sync/', {
-            'commands': commands,
-        })
+        return self.post(
+            "/api/runner/commands/sync/",
+            {
+                "commands": commands,
+            },
+        )
 
     def get_pending_executions(self) -> list[dict]:
         """
@@ -260,13 +263,13 @@ class ManageCommandClient:
         Returns:
             List of execution dicts
         """
-        response = self.get('/api/runner/pending/')
-        return response.get('executions', [])
+        response = self.get("/api/runner/pending/")
+        return response.get("executions", [])
 
     def start_execution(self, execution_id: str) -> dict:
         """Mark an execution as started."""
         _validate_execution_id(execution_id)
-        return self.post(f'/api/runner/executions/{execution_id}/start/')
+        return self.post(f"/api/runner/executions/{execution_id}/start/")
 
     def send_output(
         self,
@@ -286,17 +289,20 @@ class ManageCommandClient:
             chunk_number: Sequence number for ordering and idempotency
         """
         _validate_execution_id(execution_id)
-        return self.post(f'/api/runner/executions/{execution_id}/output/', {
-            'chunk_number': chunk_number,
-            'segments': segments,
-            'is_stderr': is_stderr,
-        })
+        return self.post(
+            f"/api/runner/executions/{execution_id}/output/",
+            {
+                "chunk_number": chunk_number,
+                "segments": segments,
+                "is_stderr": is_stderr,
+            },
+        )
 
     def complete_execution(
         self,
         execution_id: str,
         exit_code: int,
-        status: str = 'success',
+        status: str = "success",
     ) -> dict:
         """
         Mark an execution as complete.
@@ -307,10 +313,13 @@ class ManageCommandClient:
             status: One of 'success', 'failed', 'cancelled'
         """
         _validate_execution_id(execution_id)
-        return self.post(f'/api/runner/executions/{execution_id}/complete/', {
-            'exit_code': exit_code,
-            'status': status,
-        })
+        return self.post(
+            f"/api/runner/executions/{execution_id}/complete/",
+            {
+                "exit_code": exit_code,
+                "status": status,
+            },
+        )
 
     def check_cancel_status(self, execution_id: str) -> dict:
         """
@@ -320,4 +329,4 @@ class ManageCommandClient:
             dict with keys: cancel_requested, force_kill
         """
         _validate_execution_id(execution_id)
-        return self.get(f'/api/runner/executions/{execution_id}/cancel-status/')
+        return self.get(f"/api/runner/executions/{execution_id}/cancel-status/")

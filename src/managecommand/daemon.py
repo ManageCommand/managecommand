@@ -22,7 +22,6 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -83,7 +82,7 @@ class Pidfile:
     def __init__(self, path: Path):
         self.path = Path(path).resolve()
 
-    def read(self) -> Optional[PidfileData]:
+    def read(self) -> PidfileData | None:
         """Read PID data from file. Returns None if file doesn't exist or is invalid."""
         try:
             with open(self.path) as f:
@@ -175,9 +174,9 @@ class DaemonContext:
 
     def __init__(
         self,
-        pidfile: Optional[Pidfile] = None,
-        logfile: Optional[Path] = None,
-        workdir: Optional[str] = None,
+        pidfile: Pidfile | None = None,
+        logfile: Path | None = None,
+        workdir: str | None = None,
     ):
         self.pidfile = pidfile
         self.logfile = logfile
